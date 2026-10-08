@@ -1,0 +1,90 @@
+@media (max-width: 1080px) {
+  .forum-layout { grid-template-columns: 255px minmax(0, 1fr); }
+  .forum-main { padding-inline: 34px; }
+  .hero-sigil { width: 112px; height: 112px; }
+  .hero-sigil span { margin-top: 19px; font-size: 31px; }
+  .hero-sigil small { margin-bottom: 21px; }
+  .dashboard-content { grid-template-columns: 1fr; }
+  .stats-grid { grid-template-columns: repeat(2, 1fr); }
+}
+
+@media (max-width: 820px) {
+  .site-header { height: 70px; }
+  .header-status { display: none; }
+  .mobile-list-button { display: inline-flex; }
+  .forum-layout { display: block; min-height: calc(100vh - 99px); }
+  .forum-sidebar { position: fixed; inset: 0 auto 0 0; z-index: 60; width: min(330px, 88vw); height: 100vh; min-height: 0; padding-top: 28px; transform: translateX(-105%); box-shadow: 20px 0 60px rgb(0 0 0 / 55%); transition: transform .3s cubic-bezier(.2,.8,.2,1); }
+  .forum-sidebar.is-visible { transform: translateX(0); }
+  .sidebar-close { display: grid; place-items: center; }
+  .sidebar-scrim { position: fixed; inset: 0; z-index: 59; display: block; background: rgb(0 0 0 / 66%); backdrop-filter: blur(3px); }
+  .forum-main { padding: 28px 20px 0; }
+  .forum-hero { min-height: 270px; }
+  .hero-sigil { display: none; }
+  .admin-sidebar { position: static; width: auto; height: 76px; flex-direction: row; align-items: center; padding: 9px 20px; border-right: 0; border-bottom: 1px solid #29292c; }
+  .admin-brand .brand-mark { width: 36px; height: 39px; }
+  .admin-role, .admin-sidebar nav { display: none; }
+  .admin-sidebar-bottom { display: flex; margin: 0 0 0 auto; padding: 0; border: 0; }
+  .admin-sidebar-bottom a { display: none; }
+  .admin-main { margin-left: 0; padding-inline: 20px; }
+  .admin-topbar { min-height: 94px; }
+  .admin-mobile-nav { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-top: 16px; padding: 5px; border: 1px solid #2d2d30; border-radius: 5px; background: #111113; }
+  .admin-mobile-nav button { display: flex; min-height: 37px; align-items: center; justify-content: center; gap: 6px; border-radius: 3px; background: transparent; color: #6e6f75; font-size: 9px; }
+  .admin-mobile-nav button.active { background: #291117; color: #f2dce0; }
+  .list-admin-layout { grid-template-columns: 1fr; }
+  .add-category-panel { position: static; }
+}
+
+@media (max-width: 600px) {
+  .site-header { padding-inline: 15px; }
+  .brand-copy strong { font-size: 12px; }
+  .brand-copy small { display: none; }
+  .ticker > div { justify-content: flex-start; padding-left: 20px; }
+  .ticker span:nth-of-type(2), .ticker i:nth-of-type(2), .ticker span:nth-of-type(3) { display: none; }
+  .forum-main { padding-inline: 14px; }
+  .forum-hero { min-height: 255px; padding: 28px 24px; }
+  .hero-copy h1 { font-size: clamp(39px, 14vw, 57px); }
+  .feed-heading { margin-top: 43px; }
+  .post-count { display: none; }
+  .forum-post { grid-template-columns: 37px minmax(0, 1fr); }
+  .post-content { padding: 21px 18px; }
+  .post-meta { align-items: flex-start; }
+  .post-meta time { width: 100%; }
+  .site-footer { align-items: flex-start; flex-direction: column; gap: 7px; }
+  .admin-back-link { top: 20px; left: 20px; }
+  .admin-login-shell { padding-inline: 14px; }
+  .login-card { padding: 28px 21px; }
+  .login-brand { align-items: flex-start; }
+  .dev-credentials { grid-template-columns: 1fr; }
+  .topbar-actions .preview-pill { display: none; }
+  .admin-topbar h1 { font-size: 25px; }
+  .topbar-actions .primary-button { width: 40px; padding: 0; font-size: 0; }
+  .stats-grid { grid-template-columns: 1fr 1fr; gap: 9px; }
+  .stats-grid article { min-height: 93px; gap: 10px; padding: 14px; }
+  .stats-grid article > span { width: 35px; height: 35px; }
+  .stats-grid strong { font-size: 23px; }
+  .overview-panel, .readiness-panel, .posts-panel, .add-category-panel { padding: 19px; }
+  .admin-post-list article { grid-template-columns: 43px minmax(0, 1fr); gap: 10px; }
+  .admin-post-thumb { width: 41px; height: 41px; }
+  .admin-post-list .row-actions { grid-column: 2; }
+  .list-admin-layout { padding-top: 18px; }
+  .category-admin-card { padding-inline: 14px; }
+  .category-admin-card > header { grid-template-columns: 27px minmax(0, 1fr); }
+  .category-admin-card > header > .row-actions { grid-column: 2; padding-bottom: 11px; }
+  .add-entry-form { grid-template-columns: 1fr; }
+  .modal-backdrop { align-items: end; padding: 0; }
+  .editor-modal { width: 100%; max-height: 94vh; border-radius: 10px 10px 0 0; }
+  .modal-header { padding-inline: 18px; }
+  .editor-form { padding-inline: 18px; }
+  .media-editor-heading { align-items: flex-start; flex-direction: column; }
+  .confirm-modal { width: calc(100% - 24px); margin-bottom: 12px; }
+  .toast { right: 12px; bottom: 12px; left: 12px; justify-content: center; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    scroll-behavior: auto !important;
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+  }
+}

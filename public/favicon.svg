@@ -1,0 +1,16 @@
+<svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="red" x1="12" y1="5" x2="52" y2="58" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FF3654"/>
+      <stop offset="0.55" stop-color="#D50F2E"/>
+      <stop offset="1" stop-color="#720013"/>
+    </linearGradient>
+    <linearGradient id="steel" x1="18" y1="18" x2="47" y2="46" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#F4F4F6"/>
+      <stop offset="1" stop-color="#8A8B92"/>
+    </linearGradient>
+  </defs>
+  <path d="M32 3L56 12V32C56 47 46 57 32 62C18 57 8 47 8 32V12L32 3Z" fill="url(#red)"/>
+  <path d="M32 8L51 15V32C51 43.7 43.7 51.8 32 56.4C20.3 51.8 13 43.7 13 32V15L32 8Z" fill="#09090A" stroke="#3B3B40" stroke-width="2"/>
+  <path d="M18 42V21L32 34L46 21V42H39V35L32 42L25 35V42H18Z" fill="url(#steel)"/>
+</svg>

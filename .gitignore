@@ -1,0 +1,30 @@
+# dependencies
+/node_modules
+/.pnp
+.pnp.*
+
+# builds and local runtimes
+/.next/
+/.vinext/
+/dist/
+/out/
+/.wrangler/
+/coverage/
+/outputs/
+/work/
+
+# environment files
+.env*
+!.env.example
+
+# providers and logs
+/.vercel/
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+
+# misc
+.DS_Store
+*.pem
+next-env.d.ts
+*.tsbuildinfo
