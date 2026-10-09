@@ -94,6 +94,54 @@ export function PostEditor({
       throw new Error("Najpierw skonfiguruj magazyn Cloudinary.");
     }
     setProgress(25);
+    if (storageProvider === "cloudinary") {
+      const result = await new Promise<{
+        url: string;
+        pathname: string;
+        contentType: string;
+      }>((resolve, reject) => {
+        const request = new XMLHttpRequest();
+        request.open("POST", "/api/admin/upload");
+        request.withCredentials = true;
+        request.setRequestHeader("Content-Type", selected.type);
+        request.upload.onprogress = (event) => {
+          if (event.lengthComputable) {
+            setProgress(Math.max(5, Math.round((event.loaded / event.total) * 90)));
+          }
+        };
+        request.onerror = () => reject(new Error("Nie udało się połączyć z magazynem Cloudinary."));
+        request.onload = () => {
+          let payload: {
+            url?: string;
+            pathname?: string;
+            contentType?: string;
+            error?: string;
+          };
+          try {
+            payload = JSON.parse(request.responseText || "{}") as typeof payload;
+          } catch {
+            reject(new Error("Serwer zwrócił nieprawidłową odpowiedź uploadu."));
+            return;
+          }
+          if (request.status < 200 || request.status >= 300 || !payload.url || !payload.pathname) {
+            reject(new Error(payload.error || "Upload nie powiódł się."));
+            return;
+          }
+          resolve({
+            url: payload.url,
+            pathname: payload.pathname,
+            contentType: payload.contentType || selected.type,
+          });
+        };
+        request.send(selected);
+      });
+      setProgress(100);
+      return {
+        url: result.url,
+        pathname: result.pathname,
+        type: mediaTypeFor(selected),
+      };
+    }
     const response = await fetch(
       storageProvider === "r2" ? "/api/admin/media" : "/api/admin/upload",
       {

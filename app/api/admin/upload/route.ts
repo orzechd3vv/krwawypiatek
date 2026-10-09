@@ -15,15 +15,11 @@ export async function POST(request: Request) {
 
   try {
     const contentType = request.headers.get("content-type")?.split(";")[0].trim() ?? "";
-    const contentLength = Number(request.headers.get("content-length") ?? 0);
     if (!ALLOWED_MEDIA_TYPES.includes(contentType as (typeof ALLOWED_MEDIA_TYPES)[number])) {
       return NextResponse.json({ error: "Ten format pliku nie jest obsługiwany." }, { status: 415 });
     }
-    if (!request.body || !Number.isFinite(contentLength) || contentLength <= 0) {
+    if (!request.body) {
       return NextResponse.json({ error: "Plik jest pusty." }, { status: 400 });
-    }
-    if (contentLength > MAX_MEDIA_SIZE) {
-      return NextResponse.json({ error: "Plik może mieć maksymalnie 100 MB." }, { status: 413 });
     }
 
     const cloudName = process.env.CLOUDINARY_CLOUD_NAME!;
@@ -41,8 +37,15 @@ export async function POST(request: Request) {
     const signatureHex = Array.from(new Uint8Array(signature))
       .map((byte) => byte.toString(16).padStart(2, "0"))
       .join("");
+    const fileBuffer = await request.arrayBuffer();
+    if (fileBuffer.byteLength === 0) {
+      return NextResponse.json({ error: "Plik jest pusty." }, { status: 400 });
+    }
+    if (fileBuffer.byteLength > MAX_MEDIA_SIZE) {
+      return NextResponse.json({ error: "Plik może mieć maksymalnie 100 MB." }, { status: 413 });
+    }
     const form = new FormData();
-    form.append("file", new Blob([await request.arrayBuffer()], { type: contentType }), publicId);
+    form.append("file", new Blob([fileBuffer], { type: contentType }), publicId);
     form.append("api_key", apiKey);
     form.append("timestamp", String(timestamp));
     form.append("public_id", publicId);
