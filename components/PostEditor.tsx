@@ -195,18 +195,32 @@ export function PostEditor({
       if (post && uploaded) body.media = uploaded;
       if (post && removeExisting && !uploaded) body.media = null;
 
-      const response = await fetch(
-        post ? `/api/admin/posts/${encodeURIComponent(post.id)}` : "/api/admin/posts",
-        {
-          method: post ? "PATCH" : "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(body),
-        },
-      );
+      const controller = new AbortController();
+      const timeout = window.setTimeout(() => controller.abort(), 30_000);
+      let response: Response;
+      try {
+        response = await fetch(
+          post ? `/api/admin/posts/${encodeURIComponent(post.id)}` : "/api/admin/posts",
+          {
+            method: post ? "PATCH" : "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(body),
+            signal: controller.signal,
+          },
+        );
+      } finally {
+        window.clearTimeout(timeout);
+      }
       const result = await parseResponse<SavedPayload>(response);
       onSaved(result.post, !post);
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Nie udało się zapisać wpisu.");
+      setError(
+        caught instanceof DOMException && caught.name === "AbortError"
+          ? "Zapis trwał zbyt długo. Sprawdź połączenie z bazą danych i spróbuj ponownie."
+          : caught instanceof Error
+            ? caught.message
+            : "Nie udało się zapisać wpisu.",
+      );
       setPending(false);
     }
   }

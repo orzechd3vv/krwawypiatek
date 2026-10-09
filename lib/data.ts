@@ -290,49 +290,51 @@ async function initializePostgres(): Promise<void> {
         ),
       ]);
 
-      await sql.transaction((tx) => [
-        ...defaultForumData.posts.map((post) =>
-          tx.query(
-            `INSERT INTO posts
-              (id, title, description, media_url, media_pathname, media_type, published_at, created_at, updated_at)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-             ON CONFLICT(id) DO NOTHING`,
-            [
-              post.id,
-              post.title,
-              post.description,
-              post.mediaUrl,
-              post.mediaPathname,
-              post.mediaType,
-              post.publishedAt,
-              post.createdAt,
-              post.updatedAt,
-            ],
-          ),
-        ),
-        ...defaultForumData.categories.map((category) =>
-          tx.query(
-            `INSERT INTO categories (id, name, sort_order, created_at)
-             VALUES ($1, $2, $3, $4) ON CONFLICT(id) DO NOTHING`,
-            [category.id, category.name, category.sortOrder, category.createdAt],
-          ),
-        ),
-        ...defaultForumData.categories.flatMap((category) =>
-          category.entries.map((entry) =>
+      if (defaultForumData.posts.length > 0 || defaultForumData.categories.length > 0) {
+        await sql.transaction((tx) => [
+          ...defaultForumData.posts.map((post) =>
             tx.query(
-              `INSERT INTO list_entries (id, category_id, name, sort_order, created_at)
-               VALUES ($1, $2, $3, $4, $5) ON CONFLICT(id) DO NOTHING`,
+              `INSERT INTO posts
+                (id, title, description, media_url, media_pathname, media_type, published_at, created_at, updated_at)
+               VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+               ON CONFLICT(id) DO NOTHING`,
               [
-                entry.id,
-                entry.categoryId,
-                entry.name,
-                entry.sortOrder,
-                entry.createdAt,
+                post.id,
+                post.title,
+                post.description,
+                post.mediaUrl,
+                post.mediaPathname,
+                post.mediaType,
+                post.publishedAt,
+                post.createdAt,
+                post.updatedAt,
               ],
             ),
           ),
-        ),
-      ]);
+          ...defaultForumData.categories.map((category) =>
+            tx.query(
+              `INSERT INTO categories (id, name, sort_order, created_at)
+               VALUES ($1, $2, $3, $4) ON CONFLICT(id) DO NOTHING`,
+              [category.id, category.name, category.sortOrder, category.createdAt],
+            ),
+          ),
+          ...defaultForumData.categories.flatMap((category) =>
+            category.entries.map((entry) =>
+              tx.query(
+                `INSERT INTO list_entries (id, category_id, name, sort_order, created_at)
+                 VALUES ($1, $2, $3, $4, $5) ON CONFLICT(id) DO NOTHING`,
+                [
+                  entry.id,
+                  entry.categoryId,
+                  entry.name,
+                  entry.sortOrder,
+                  entry.createdAt,
+                ],
+              ),
+            ),
+          ),
+        ]);
+      }
     })().catch((error) => {
       postgresReady = null;
       throw error;
