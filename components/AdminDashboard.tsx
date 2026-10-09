@@ -327,7 +327,7 @@ export function AdminDashboard({
             <section className="admin-panel readiness-panel">
               <div><span className="eyebrow">STATUS SYSTEMU</span><h2>Gotowość publikacji</h2></div>
               <div className="readiness-row"><span>Baza treści</span><strong><i className="ok-dot" /> Aktywna</strong></div>
-              <div className="readiness-row"><span>Magazyn mediów</span><strong className={storageProvider === "unconfigured" ? "warning-text" : ""}><i className={storageProvider === "unconfigured" ? "warning-dot" : "ok-dot"} /> {storageProvider === "r2" ? "R2 / aktywny" : storageProvider === "vercel-blob" ? "Vercel Blob / aktywny" : "Do konfiguracji"}</strong></div>
+              <div className="readiness-row"><span>Magazyn mediów</span><strong className={storageProvider === "unconfigured" ? "warning-text" : ""}><i className={storageProvider === "unconfigured" ? "warning-dot" : "ok-dot"} /> {storageProvider === "r2" ? "R2 / aktywny" : storageProvider === "cloudinary" ? "Cloudinary / aktywny" : "Do konfiguracji"}</strong></div>
               <div className="readiness-row"><span>Sesja administratora</span><strong><i className="ok-dot" /> Chroniona</strong></div>
             </section>
           </div>

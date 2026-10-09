@@ -34,7 +34,7 @@ export type ForumData = {
   source: "database" | "preview";
 };
 
-export type StorageProvider = "r2" | "vercel-blob" | "unconfigured";
+export type StorageProvider = "r2" | "cloudinary" | "unconfigured";
 
 export type ApiError = {
   error: string;

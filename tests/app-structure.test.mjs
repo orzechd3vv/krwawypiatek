@@ -39,7 +39,9 @@ test("is ready for Vercel persistence and media uploads", async () => {
   ]);
   assert.match(vercel, /nextjs/);
   assert.match(environment, /DATABASE_URL/);
-  assert.match(environment, /BLOB_READ_WRITE_TOKEN/);
+  assert.match(environment, /CLOUDINARY_CLOUD_NAME/);
+  assert.match(environment, /CLOUDINARY_API_SECRET/);
   assert.match(data, /@neondatabase\/serverless/);
-  assert.match(upload, /allowedContentTypes/);
+  assert.match(upload, /CLOUDINARY_CLOUD_NAME/);
+  assert.match(upload, /ALLOWED_MEDIA_TYPES/);
 });

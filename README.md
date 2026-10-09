@@ -11,7 +11,7 @@ Produkcyjne forum informacyjne w Next.js/TypeScript z chronionym panelem adminis
 - opcjonalne zdjęcia i filmy do 100 MB,
 - zarządzanie kategoriami i dowolną liczbę pozycji,
 - podpisane sesje administratora, ochrona CSRF, limit prób logowania i walidacja serwerowa,
-- Neon Postgres dla danych oraz Vercel Blob dla mediów,
+- Neon Postgres dla danych oraz Cloudinary dla mediów,
 - lokalny backend D1/R2 podczas pracy przez Sites/Vinext,
 - pełna responsywność i obsługa `prefers-reduced-motion`.
 
@@ -33,7 +33,7 @@ Nie używaj tych danych w produkcji. Lokalny Vinext może również korzystać z
 
 1. Zaimportuj repozytorium jako projekt Next.js.
 2. W Vercel Marketplace podłącz bazą **Neon Postgres**. Powinna dodać `DATABASE_URL`.
-3. W zakładce Storage utwórz **publiczny Vercel Blob store** i połącz go z projektem. Vercel doda `BLOB_READ_WRITE_TOKEN`.
+3. Utwórz konto Cloudinary i dodaj w zmiennych środowiskowych: `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET` oraz `CLOUDINARY_UPLOAD_PRESET` (domyślnie `ml_default`).
 4. Wygeneruj hash mocnego hasła:
 
    ```bash

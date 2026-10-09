@@ -1,6 +1,6 @@
 import "server-only";
 
-import { del } from "@vercel/blob";
+import { createHash } from "node:crypto";
 import { neon, type NeonQueryFunction } from "@neondatabase/serverless";
 import { env } from "cloudflare:workers";
 import { cloneDefaultForumData, defaultForumData } from "./default-data";
@@ -838,7 +838,13 @@ export async function deleteEntry(id: string): Promise<void> {
 
 export function getStorageProvider(): StorageProvider {
   if (bindings.MEDIA) return "r2";
-  if (process.env.BLOB_READ_WRITE_TOKEN) return "vercel-blob";
+  if (
+    process.env.CLOUDINARY_CLOUD_NAME &&
+    process.env.CLOUDINARY_API_KEY &&
+    process.env.CLOUDINARY_API_SECRET
+  ) {
+    return "cloudinary";
+  }
   return "unconfigured";
 }
 
@@ -853,8 +859,34 @@ export async function deleteStoredMedia(pathname: string | null): Promise<void> 
       await bindings.MEDIA.delete(pathname);
       return;
     }
-    if (process.env.BLOB_READ_WRITE_TOKEN) {
-      await del(pathname, { token: process.env.BLOB_READ_WRITE_TOKEN });
+    const [resourceType, publicId] = pathname.split("|", 2);
+    if (
+      resourceType !== "image" &&
+      resourceType !== "video"
+    ) {
+      return;
+    }
+    const cloudName = process.env.CLOUDINARY_CLOUD_NAME;
+    const apiKey = process.env.CLOUDINARY_API_KEY;
+    const apiSecret = process.env.CLOUDINARY_API_SECRET;
+    if (!cloudName || !apiKey || !apiSecret || !publicId) return;
+
+    const timestamp = Math.floor(Date.now() / 1000);
+    const signature = createHash("sha1")
+      .update(`public_id=${publicId}&timestamp=${timestamp}${apiSecret}`)
+      .digest("hex");
+    const body = new URLSearchParams({
+      public_id: publicId,
+      timestamp: String(timestamp),
+      api_key: apiKey,
+      signature,
+    });
+    const response = await fetch(
+      `https://api.cloudinary.com/v1_1/${encodeURIComponent(cloudName)}/${resourceType}/destroy`,
+      { method: "POST", body },
+    );
+    if (!response.ok) {
+      throw new Error(`Cloudinary delete failed with ${response.status}.`);
     }
   } catch (error) {
     console.error("Nie udało się usunąć nieużywanego pliku multimedialnego.", error);

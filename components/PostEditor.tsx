@@ -1,6 +1,5 @@
 "use client";
 
-import { upload } from "@vercel/blob/client";
 import {
   FileImage,
   Film,
@@ -34,18 +33,6 @@ const acceptedTypes = new Set([
 
 function mediaTypeFor(file: File): MediaType {
   return file.type.startsWith("video/") ? "video" : "image";
-}
-
-function safeFileName(name: string): string {
-  const extension = name.includes(".") ? `.${name.split(".").pop()}` : "";
-  const base = name
-    .replace(/\.[^.]+$/, "")
-    .normalize("NFKD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/[^a-zA-Z0-9_-]+/g, "-")
-    .replace(/^-+|-+$/g, "")
-    .slice(0, 60) || "media";
-  return `${base}${extension.toLowerCase()}`;
 }
 
 async function parseResponse<T>(response: Response): Promise<T> {
@@ -104,37 +91,20 @@ export function PostEditor({
 
   async function uploadFile(selected: File): Promise<MediaPayload> {
     if (storageProvider === "unconfigured") {
-      throw new Error("Najpierw podłącz magazyn Vercel Blob do projektu.");
+      throw new Error("Najpierw skonfiguruj magazyn Cloudinary.");
     }
-    if (storageProvider === "vercel-blob") {
-      const blob = await upload(
-        `mvp-mafia/media/${crypto.randomUUID()}-${safeFileName(selected.name)}`,
-        selected,
-        {
-          access: "public",
-          contentType: selected.type,
-          handleUploadUrl: "/api/admin/upload",
-          multipart: selected.size > 8 * 1024 * 1024,
-          clientPayload: JSON.stringify({ kind: mediaTypeFor(selected) }),
-          onUploadProgress: ({ percentage }) => setProgress(Math.max(5, percentage)),
-        },
-      );
-      return {
-        url: blob.url,
-        pathname: blob.pathname,
-        type: mediaTypeFor(selected),
-      };
-    }
-
     setProgress(25);
-    const response = await fetch("/api/admin/media", {
+    const response = await fetch(
+      storageProvider === "r2" ? "/api/admin/media" : "/api/admin/upload",
+      {
       method: "POST",
       headers: {
         "Content-Type": selected.type,
         "Content-Length": String(selected.size),
       },
       body: selected,
-    });
+      },
+    );
     const result = await parseResponse<{
       url: string;
       pathname: string;
@@ -285,7 +255,7 @@ export function PostEditor({
               </button>
             )}
             {storageProvider === "unconfigured" && (
-              <p className="storage-warning">Upload będzie dostępny po podłączeniu Vercel Blob. Wpis tekstowy możesz opublikować już teraz.</p>
+              <p className="storage-warning">Upload będzie dostępny po skonfigurowaniu Cloudinary. Wpis tekstowy możesz opublikować już teraz.</p>
             )}
           </div>
 

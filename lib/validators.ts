@@ -8,7 +8,7 @@ const optionalMediaSchema = z
       .refine(
         (value) =>
           value.startsWith("/media/") ||
-          /^https:\/\/[a-z0-9-]+\.public\.blob\.vercel-storage\.com\//i.test(
+          /^https:\/\/res\.cloudinary\.com\/[a-z0-9_-]+\/(image|video)\/upload\//i.test(
             value,
           ),
         "Nieprawidłowy adres przesłanego pliku.",
