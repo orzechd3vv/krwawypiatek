@@ -1,6 +1,6 @@
 import "server-only";
 
-import { del } from "@vercel/blob";
+import { createHash } from "node:crypto";
 import { neon, type NeonQueryFunction } from "@neondatabase/serverless";
 import { env } from "cloudflare:workers";
 import { cloneDefaultForumData, defaultForumData } from "./default-data";
@@ -290,49 +290,51 @@ async function initializePostgres(): Promise<void> {
         ),
       ]);
 
-      await sql.transaction((tx) => [
-        ...defaultForumData.posts.map((post) =>
-          tx.query(
-            `INSERT INTO posts
-              (id, title, description, media_url, media_pathname, media_type, published_at, created_at, updated_at)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-             ON CONFLICT(id) DO NOTHING`,
-            [
-              post.id,
-              post.title,
-              post.description,
-              post.mediaUrl,
-              post.mediaPathname,
-              post.mediaType,
-              post.publishedAt,
-              post.createdAt,
-              post.updatedAt,
-            ],
-          ),
-        ),
-        ...defaultForumData.categories.map((category) =>
-          tx.query(
-            `INSERT INTO categories (id, name, sort_order, created_at)
-             VALUES ($1, $2, $3, $4) ON CONFLICT(id) DO NOTHING`,
-            [category.id, category.name, category.sortOrder, category.createdAt],
-          ),
-        ),
-        ...defaultForumData.categories.flatMap((category) =>
-          category.entries.map((entry) =>
+      if (defaultForumData.posts.length > 0 || defaultForumData.categories.length > 0) {
+        await sql.transaction((tx) => [
+          ...defaultForumData.posts.map((post) =>
             tx.query(
-              `INSERT INTO list_entries (id, category_id, name, sort_order, created_at)
-               VALUES ($1, $2, $3, $4, $5) ON CONFLICT(id) DO NOTHING`,
+              `INSERT INTO posts
+                (id, title, description, media_url, media_pathname, media_type, published_at, created_at, updated_at)
+               VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+               ON CONFLICT(id) DO NOTHING`,
               [
-                entry.id,
-                entry.categoryId,
-                entry.name,
-                entry.sortOrder,
-                entry.createdAt,
+                post.id,
+                post.title,
+                post.description,
+                post.mediaUrl,
+                post.mediaPathname,
+                post.mediaType,
+                post.publishedAt,
+                post.createdAt,
+                post.updatedAt,
               ],
             ),
           ),
-        ),
-      ]);
+          ...defaultForumData.categories.map((category) =>
+            tx.query(
+              `INSERT INTO categories (id, name, sort_order, created_at)
+               VALUES ($1, $2, $3, $4) ON CONFLICT(id) DO NOTHING`,
+              [category.id, category.name, category.sortOrder, category.createdAt],
+            ),
+          ),
+          ...defaultForumData.categories.flatMap((category) =>
+            category.entries.map((entry) =>
+              tx.query(
+                `INSERT INTO list_entries (id, category_id, name, sort_order, created_at)
+                 VALUES ($1, $2, $3, $4, $5) ON CONFLICT(id) DO NOTHING`,
+                [
+                  entry.id,
+                  entry.categoryId,
+                  entry.name,
+                  entry.sortOrder,
+                  entry.createdAt,
+                ],
+              ),
+            ),
+          ),
+        ]);
+      }
     })().catch((error) => {
       postgresReady = null;
       throw error;
@@ -838,7 +840,13 @@ export async function deleteEntry(id: string): Promise<void> {
 
 export function getStorageProvider(): StorageProvider {
   if (bindings.MEDIA) return "r2";
-  if (process.env.BLOB_READ_WRITE_TOKEN) return "vercel-blob";
+  if (
+    process.env.CLOUDINARY_CLOUD_NAME &&
+    process.env.CLOUDINARY_API_KEY &&
+    process.env.CLOUDINARY_API_SECRET
+  ) {
+    return "cloudinary";
+  }
   return "unconfigured";
 }
 
@@ -853,8 +861,34 @@ export async function deleteStoredMedia(pathname: string | null): Promise<void> 
       await bindings.MEDIA.delete(pathname);
       return;
     }
-    if (process.env.BLOB_READ_WRITE_TOKEN) {
-      await del(pathname, { token: process.env.BLOB_READ_WRITE_TOKEN });
+    const [resourceType, publicId] = pathname.split("|", 2);
+    if (
+      resourceType !== "image" &&
+      resourceType !== "video"
+    ) {
+      return;
+    }
+    const cloudName = process.env.CLOUDINARY_CLOUD_NAME;
+    const apiKey = process.env.CLOUDINARY_API_KEY;
+    const apiSecret = process.env.CLOUDINARY_API_SECRET;
+    if (!cloudName || !apiKey || !apiSecret || !publicId) return;
+
+    const timestamp = Math.floor(Date.now() / 1000);
+    const signature = createHash("sha1")
+      .update(`public_id=${publicId}&timestamp=${timestamp}${apiSecret}`)
+      .digest("hex");
+    const body = new URLSearchParams({
+      public_id: publicId,
+      timestamp: String(timestamp),
+      api_key: apiKey,
+      signature,
+    });
+    const response = await fetch(
+      `https://api.cloudinary.com/v1_1/${encodeURIComponent(cloudName)}/${resourceType}/destroy`,
+      { method: "POST", body },
+    );
+    if (!response.ok) {
+      throw new Error(`Cloudinary delete failed with ${response.status}.`);
     }
   } catch (error) {
     console.error("Nie udało się usunąć nieużywanego pliku multimedialnego.", error);

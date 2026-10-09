@@ -1,6 +1,5 @@
 "use client";
 
-import { upload } from "@vercel/blob/client";
 import {
   FileImage,
   Film,
@@ -34,18 +33,6 @@ const acceptedTypes = new Set([
 
 function mediaTypeFor(file: File): MediaType {
   return file.type.startsWith("video/") ? "video" : "image";
-}
-
-function safeFileName(name: string): string {
-  const extension = name.includes(".") ? `.${name.split(".").pop()}` : "";
-  const base = name
-    .replace(/\.[^.]+$/, "")
-    .normalize("NFKD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/[^a-zA-Z0-9_-]+/g, "-")
-    .replace(/^-+|-+$/g, "")
-    .slice(0, 60) || "media";
-  return `${base}${extension.toLowerCase()}`;
 }
 
 async function parseResponse<T>(response: Response): Promise<T> {
@@ -104,37 +91,105 @@ export function PostEditor({
 
   async function uploadFile(selected: File): Promise<MediaPayload> {
     if (storageProvider === "unconfigured") {
-      throw new Error("Najpierw podłącz magazyn Vercel Blob do projektu.");
+      throw new Error("Najpierw skonfiguruj magazyn Cloudinary.");
     }
-    if (storageProvider === "vercel-blob") {
-      const blob = await upload(
-        `mvp-mafia/media/${crypto.randomUUID()}-${safeFileName(selected.name)}`,
-        selected,
-        {
-          access: "public",
-          contentType: selected.type,
-          handleUploadUrl: "/api/admin/upload",
-          multipart: selected.size > 8 * 1024 * 1024,
-          clientPayload: JSON.stringify({ kind: mediaTypeFor(selected) }),
-          onUploadProgress: ({ percentage }) => setProgress(Math.max(5, percentage)),
-        },
-      );
+    setProgress(25);
+    if (storageProvider === "cloudinary") {
+      const configController = new AbortController();
+      const configTimeout = window.setTimeout(() => configController.abort(), 10_000);
+      let configResponse: Response;
+      try {
+        configResponse = await fetch("/api/admin/upload", {
+          method: "POST",
+          headers: { "Content-Type": selected.type },
+          signal: configController.signal,
+        });
+      } finally {
+        window.clearTimeout(configTimeout);
+      }
+      const config = await parseResponse<{
+        cloudName: string;
+        apiKey: string;
+        resourceType: "image" | "video";
+        publicId: string;
+        timestamp: number;
+        uploadPreset: string;
+        signature: string;
+      }>(configResponse);
+      const result = await new Promise<{
+        url: string;
+        pathname: string;
+      }>((resolve, reject) => {
+        const request = new XMLHttpRequest();
+        request.open(
+          "POST",
+          `https://api.cloudinary.com/v1_1/${encodeURIComponent(config.cloudName)}/${config.resourceType}/upload`,
+        );
+        request.timeout = 120_000;
+        request.upload.onprogress = (event) => {
+          if (event.lengthComputable) {
+            setProgress(Math.max(5, Math.round((event.loaded / event.total) * 95)));
+          }
+        };
+        request.onerror = () => reject(new Error("Nie udało się połączyć z Cloudinary."));
+        request.ontimeout = () => reject(new Error("Cloudinary nie odpowiedział w wyznaczonym czasie."));
+        request.onload = () => {
+          let payload: {
+            url?: string;
+            pathname?: string;
+            secure_url?: string;
+            public_id?: string;
+            resource_type?: "image" | "video";
+            error?: string;
+          };
+          try {
+            payload = JSON.parse(request.responseText || "{}") as typeof payload;
+          } catch {
+            reject(new Error("Serwer zwrócił nieprawidłową odpowiedź uploadu."));
+            return;
+          }
+          if (
+            request.status < 200 ||
+            request.status >= 300 ||
+            !payload.secure_url ||
+            !payload.public_id ||
+            !payload.resource_type
+          ) {
+            reject(new Error(payload.error || "Cloudinary odrzucił upload."));
+            return;
+          }
+          resolve({
+            url: payload.secure_url,
+            pathname: `${payload.resource_type}|${payload.public_id}`,
+          });
+        };
+        const form = new FormData();
+        form.append("file", selected);
+        form.append("api_key", config.apiKey);
+        form.append("timestamp", String(config.timestamp));
+        form.append("public_id", config.publicId);
+        form.append("upload_preset", config.uploadPreset);
+        form.append("signature", config.signature);
+        request.send(form);
+      });
+      setProgress(100);
       return {
-        url: blob.url,
-        pathname: blob.pathname,
+        url: result.url,
+        pathname: result.pathname,
         type: mediaTypeFor(selected),
       };
     }
-
-    setProgress(25);
-    const response = await fetch("/api/admin/media", {
+    const response = await fetch(
+      storageProvider === "r2" ? "/api/admin/media" : "/api/admin/upload",
+      {
       method: "POST",
       headers: {
         "Content-Type": selected.type,
         "Content-Length": String(selected.size),
       },
       body: selected,
-    });
+      },
+    );
     const result = await parseResponse<{
       url: string;
       pathname: string;
@@ -177,18 +232,32 @@ export function PostEditor({
       if (post && uploaded) body.media = uploaded;
       if (post && removeExisting && !uploaded) body.media = null;
 
-      const response = await fetch(
-        post ? `/api/admin/posts/${encodeURIComponent(post.id)}` : "/api/admin/posts",
-        {
-          method: post ? "PATCH" : "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(body),
-        },
-      );
+      const controller = new AbortController();
+      const timeout = window.setTimeout(() => controller.abort(), 30_000);
+      let response: Response;
+      try {
+        response = await fetch(
+          post ? `/api/admin/posts/${encodeURIComponent(post.id)}` : "/api/admin/posts",
+          {
+            method: post ? "PATCH" : "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(body),
+            signal: controller.signal,
+          },
+        );
+      } finally {
+        window.clearTimeout(timeout);
+      }
       const result = await parseResponse<SavedPayload>(response);
       onSaved(result.post, !post);
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Nie udało się zapisać wpisu.");
+      setError(
+        caught instanceof DOMException && caught.name === "AbortError"
+          ? "Zapis trwał zbyt długo. Sprawdź połączenie z bazą danych i spróbuj ponownie."
+          : caught instanceof Error
+            ? caught.message
+            : "Nie udało się zapisać wpisu.",
+      );
       setPending(false);
     }
   }
@@ -285,7 +354,7 @@ export function PostEditor({
               </button>
             )}
             {storageProvider === "unconfigured" && (
-              <p className="storage-warning">Upload będzie dostępny po podłączeniu Vercel Blob. Wpis tekstowy możesz opublikować już teraz.</p>
+              <p className="storage-warning">Upload będzie dostępny po skonfigurowaniu Cloudinary. Wpis tekstowy możesz opublikować już teraz.</p>
             )}
           </div>
 
