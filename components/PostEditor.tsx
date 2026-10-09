@@ -95,26 +95,51 @@ export function PostEditor({
     }
     setProgress(25);
     if (storageProvider === "cloudinary") {
+      const configController = new AbortController();
+      const configTimeout = window.setTimeout(() => configController.abort(), 10_000);
+      let configResponse: Response;
+      try {
+        configResponse = await fetch("/api/admin/upload", {
+          method: "POST",
+          headers: { "Content-Type": selected.type },
+          signal: configController.signal,
+        });
+      } finally {
+        window.clearTimeout(configTimeout);
+      }
+      const config = await parseResponse<{
+        cloudName: string;
+        apiKey: string;
+        resourceType: "image" | "video";
+        publicId: string;
+        timestamp: number;
+        uploadPreset: string;
+        signature: string;
+      }>(configResponse);
       const result = await new Promise<{
         url: string;
         pathname: string;
-        contentType: string;
       }>((resolve, reject) => {
         const request = new XMLHttpRequest();
-        request.open("POST", "/api/admin/upload");
-        request.withCredentials = true;
-        request.setRequestHeader("Content-Type", selected.type);
+        request.open(
+          "POST",
+          `https://api.cloudinary.com/v1_1/${encodeURIComponent(config.cloudName)}/${config.resourceType}/upload`,
+        );
+        request.timeout = 120_000;
         request.upload.onprogress = (event) => {
           if (event.lengthComputable) {
-            setProgress(Math.max(5, Math.round((event.loaded / event.total) * 90)));
+            setProgress(Math.max(5, Math.round((event.loaded / event.total) * 95)));
           }
         };
-        request.onerror = () => reject(new Error("Nie udało się połączyć z magazynem Cloudinary."));
+        request.onerror = () => reject(new Error("Nie udało się połączyć z Cloudinary."));
+        request.ontimeout = () => reject(new Error("Cloudinary nie odpowiedział w wyznaczonym czasie."));
         request.onload = () => {
           let payload: {
             url?: string;
             pathname?: string;
-            contentType?: string;
+            secure_url?: string;
+            public_id?: string;
+            resource_type?: "image" | "video";
             error?: string;
           };
           try {
@@ -123,17 +148,29 @@ export function PostEditor({
             reject(new Error("Serwer zwrócił nieprawidłową odpowiedź uploadu."));
             return;
           }
-          if (request.status < 200 || request.status >= 300 || !payload.url || !payload.pathname) {
-            reject(new Error(payload.error || "Upload nie powiódł się."));
+          if (
+            request.status < 200 ||
+            request.status >= 300 ||
+            !payload.secure_url ||
+            !payload.public_id ||
+            !payload.resource_type
+          ) {
+            reject(new Error(payload.error || "Cloudinary odrzucił upload."));
             return;
           }
           resolve({
-            url: payload.url,
-            pathname: payload.pathname,
-            contentType: payload.contentType || selected.type,
+            url: payload.secure_url,
+            pathname: `${payload.resource_type}|${payload.public_id}`,
           });
         };
-        request.send(selected);
+        const form = new FormData();
+        form.append("file", selected);
+        form.append("api_key", config.apiKey);
+        form.append("timestamp", String(config.timestamp));
+        form.append("public_id", config.publicId);
+        form.append("upload_preset", config.uploadPreset);
+        form.append("signature", config.signature);
+        request.send(form);
       });
       setProgress(100);
       return {
