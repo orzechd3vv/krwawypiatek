@@ -47,7 +47,7 @@ Nie używaj tych danych w produkcji. Lokalny Vinext może również korzystać z
    - `ADMIN_SESSION_SECRET` — losowy sekret mający minimum 32 znaki
    - `NEXT_PUBLIC_SITE_URL` — docelowy adres strony
 
-6. Wdróż projekt. Tabele i początkowa zawartość zostaną utworzone automatycznie przy pierwszym żądaniu. Migrację można również wykonać ręcznie poleceniem `npm run db:migrate` przy ustawionym `DATABASE_URL`.
+6. Wdróż projekt. Tabele zostaną utworzone automatycznie przy pierwszym żądaniu, bez dodawania początkowych list ani publikacji. Migrację można również wykonać ręcznie poleceniem `npm run db:migrate` przy ustawionym `DATABASE_URL`.
 
 ## Walidacja
 
